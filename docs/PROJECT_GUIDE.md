@@ -56,3 +56,63 @@ Presentation: "The engine depends on a common interface rather than one specific
 checker. I can add another check implementing that interface. The report uses
 streams to summarize results. Scoring is deterministic and documented in
 ANALYSIS_RULES.md, so I can calculate an example by hand."
+
+## Part 3: authentication, account services, and files
+
+- `model/User.java`: immutable user metadata. The original object is not changed;
+  `withLoginState` returns a replacement with new failure/lock information.
+- `service/AuthenticationService.java`: validates registration, checks passwords,
+  enforces five failed attempts and a 60-second lock, and opens the user's vault.
+  Username/email is case-insensitive. The lock and failure count survive restart.
+  A successful login resets them; after expiry a new failure starts a new count.
+- `service/AccountService.java`: one logged-in user's account list. CRUD means
+  **Create, Read, Update, Delete**. Search uses a stream and lambda. UUIDs identify
+  records even when names change. Duplicate platform/username pairs are rejected.
+  Saves happen before changing memory, so a failed save does not pretend success.
+- `security/PasswordHasher.java`: Java's PBKDF2-HMAC-SHA256, 600,000 iterations,
+  a random 16-byte salt, and a 256-bit result. A salt makes identical passwords
+  produce different stored verifiers. Verification uses a constant-time comparison.
+- `security/VaultEncryption.java`: AES-256-GCM encryption with a fresh 12-byte
+  nonce and 128-bit authentication tag on every save. The owner ID is bound as
+  authenticated data. Changed ciphertext or a wrong key fails authentication.
+- `persistence/FileStore.java`: owns all disk formats. `Properties` holds user
+  metadata. `DataInputStream`/`DataOutputStream` encode account records inside an
+  encrypted vault. This demonstrates **byte streams**, **file I/O**, and **composition**.
+  Temporary files contain ciphertext, not plaintext account records.
+- `AutoCloseable` and **try-with-resources** release the file lock and clear a
+  session when leaving its block, including when an exception is thrown.
+- `IOException` means a file operation failed; `GeneralSecurityException` means
+  a cryptographic operation failed. These differ from invalid user input.
+
+### Hashing versus encryption
+
+Hashing is used to verify the SecureVault login password; we do not recover it.
+Encryption is used for online-account passwords, because the user requested
+analysis after reopening the program. The vault key is derived from the login
+password using a separate random salt; the key itself is not stored.
+
+### On disk
+
+`data/users.properties` holds usernames, IDs, salts, password verifiers, and login
+state. `data/<user-id>.vault` holds encrypted account records. `data/.lock` is an
+OS file-lock target preventing two app instances from overwriting each other's
+changes. Its presence alone does not mean a process is running.
+
+Each save uses a temporary file and replacement (atomic where supported). This
+is not a transactional database: interrupted registration can leave an unused
+encrypted vault. Damaged/missing existing vaults produce errors instead of being
+silently replaced. Files are versioned; future format changes need migration.
+
+### Honest security boundaries for your presentation
+
+This is an educational local application, not an independently audited password
+manager. Use synthetic passwords for demonstrations. Local file permissions and
+device security still matter. An attacker able to modify the local metadata can
+reset the UI lock counter; the lock is not protection against offline guessing.
+There is no password reset/recovery feature: forgetting the login password means
+the encrypted vault cannot be recovered by this application. Some Java/crypto
+buffers cannot be reliably erased; clearing our arrays is a limited precaution.
+
+The tests use their own temporary directory. They verify encryption, tampering,
+restart persistence, lock expiry, user isolation, CRUD, corruption handling, and
+save failures without touching real app data.

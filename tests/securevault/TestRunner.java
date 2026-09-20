@@ -2,6 +2,16 @@ package securevault;
 
 import java.util.UUID;
 import java.util.List;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import securevault.enums.AccountType;
 import securevault.enums.PasswordStrength;
 import securevault.enums.RiskLevel;
@@ -10,6 +20,11 @@ import securevault.model.Account;
 import securevault.model.SecurityReport;
 import securevault.security.PasswordStrengthChecker;
 import securevault.security.SecurityAnalysisEngine;
+import securevault.security.PasswordHasher;
+import securevault.security.VaultEncryption;
+import securevault.persistence.FileStore;
+import securevault.service.AccountService;
+import securevault.service.AuthenticationService;
 
 /** Small executable checks; assertions remain active without the -ea option. */
 public final class TestRunner {
@@ -32,7 +47,150 @@ public final class TestRunner {
             checks++;
         }
         analysisChecks();
+        encryptionChecks();
+        persistenceChecks();
         System.out.println("PASS: " + checks + " checks");
+    }
+
+    private static void encryptionChecks() throws Exception {
+        PasswordHasher hasher = new PasswordHasher();
+        char[] password = "Fictional-login!842".toCharArray();
+        byte[] salt = hasher.newSalt();
+        byte[] hash = hasher.derive(password, salt);
+        check(hasher.verify(password, salt, hash), "Correct password verifies");
+        check(!hasher.verify("incorrect".toCharArray(), salt, hash), "Wrong password does not verify");
+        check(!Arrays.equals(hash, hasher.derive(password, hasher.newSalt())), "Salt changes derived value");
+        VaultEncryption crypto = new VaultEncryption();
+        UUID owner = UUID.randomUUID();
+        byte[] plain = "fictional-private-data".getBytes(StandardCharsets.UTF_8);
+        byte[] first = crypto.encrypt(plain, hash, owner);
+        byte[] second = crypto.encrypt(plain, hash, owner);
+        check(!Arrays.equals(first, second), "Every encryption uses a fresh nonce");
+        check(Arrays.equals(plain, crypto.decrypt(first, hash, owner)), "Encrypted content round trips");
+        expect(GeneralSecurityException.class, () -> crypto.decrypt(first, hash, UUID.randomUUID()), "Owner binding");
+        expect(GeneralSecurityException.class, () -> crypto.decrypt(first, new byte[32], owner), "Wrong encryption key");
+        first[first.length - 1] ^= 1;
+        expect(GeneralSecurityException.class, () -> crypto.decrypt(first, hash, owner), "Tampered vault is rejected");
+        expect(GeneralSecurityException.class, () -> crypto.decrypt(new byte[3], hash, owner), "Truncated vault is rejected");
+    }
+
+    private static void persistenceChecks() throws Exception {
+        Path root = Files.createTempDirectory("securevault-tests-");
+        char[] password = "Fictional-login!842".toCharArray();
+        Clock now = Clock.fixed(Instant.parse("2026-09-20T12:00:00Z"), ZoneOffset.UTC);
+        UUID accountId;
+        UUID userId;
+        try {
+            try (FileStore store = new FileStore(root)) {
+                expect(IOException.class, () -> { try (FileStore ignored = new FileStore(root)) { } }, "Second instance is blocked");
+                AuthenticationService auth = new AuthenticationService(store, now);
+                expect(ValidationException.class, () -> auth.register("alice", "short".toCharArray()), "Short login password rejected");
+                auth.register("Alice", password);
+                userId = store.loadUsers().get(0).getId();
+                expect(ValidationException.class, () -> auth.register("ALICE", password), "Usernames are case-insensitive");
+                try (AccountService session = auth.login("alice", password)) {
+                    check(session.list().isEmpty(), "New user starts with empty vault");
+                    session.add("Mail", "student@example.com", AccountType.EMAIL, "Welcome@123".toCharArray());
+                    accountId = session.list().get(0).getId();
+                    expect(ValidationException.class, () -> session.add("MAIL", "STUDENT@example.com", AccountType.EMAIL,
+                            "other".toCharArray()), "Duplicate platform and username rejected");
+                    check(session.search("MAIL").size() == 1, "Search is case-insensitive");
+                    check(session.search("banking").isEmpty(), "Search has no false match");
+                    Path vault = root.resolve(userId + ".vault");
+                    check(!new String(Files.readAllBytes(vault), StandardCharsets.ISO_8859_1).contains("Welcome@123"),
+                            "No plaintext account password on disk");
+                    check(!Files.readString(root.resolve("users.properties")).contains(new String(password)),
+                            "No plaintext login password on disk");
+                    // Force replacement failure without relying on OS-specific file permissions.
+                    Path backup = root.resolve("test-backup.vault");
+                    Files.move(vault, backup);
+                    Files.createDirectory(vault);
+                    Files.writeString(vault.resolve("blocker"), "test");
+                    try {
+                        expect(IOException.class, () -> session.delete(accountId), "Failed save is reported");
+                        check(session.list().size() == 1, "Failed delete preserves session state");
+                    } finally {
+                        Files.delete(vault.resolve("blocker"));
+                        Files.delete(vault);
+                        Files.move(backup, vault);
+                    }
+                }
+                expect(ValidationException.class, () -> auth.login("alice", "bad".toCharArray()), "Failed login is recorded");
+                check(store.loadUsers().get(0).getFailedAttempts() == 1, "Failed login persisted");
+            }
+            try (FileStore store = new FileStore(root)) {
+                AuthenticationService auth = new AuthenticationService(store, now);
+                check(store.loadUsers().get(0).getFailedAttempts() == 1, "Failed attempts survive restart");
+                for (int i = 0; i < 4; i++) {
+                    expect(ValidationException.class, () -> auth.login("alice", "bad".toCharArray()), "Wrong password rejected");
+                }
+                check(store.loadUsers().get(0).getLockedUntil() == now.instant().getEpochSecond() + 60, "Fifth failure starts lock");
+                expect(ValidationException.class, () -> auth.login("alice", password), "Correct password cannot bypass active lock");
+            }
+            try (FileStore store = new FileStore(root)) {
+                AuthenticationService lockedAuth = new AuthenticationService(store, now);
+                expect(ValidationException.class, () -> lockedAuth.login("alice", password), "Lock survives restart");
+                AuthenticationService auth = new AuthenticationService(store, Clock.offset(now, java.time.Duration.ofSeconds(61)));
+                try (AccountService session = auth.login("alice", password)) {
+                    check(session.list().size() == 1, "Account survives restart");
+                    check(session.list().get(0).getId().equals(accountId), "Stable account ID survives restart");
+                    check(store.loadUsers().get(0).getFailedAttempts() == 0, "Successful login resets failures");
+                    session.update(accountId, "Private Mail", "student@example.com", AccountType.EMAIL,
+                            "V9!mR2$kL7&zP4@x".toCharArray());
+                }
+                try (AccountService session = auth.login("alice", password)) {
+                    check(session.list().get(0).getPlatform().equals("Private Mail"), "Update persists");
+                    check(new SecurityAnalysisEngine().analyze(session.list()).getScore() == 100, "Updated password is analyzed");
+                }
+                auth.register("bob", password);
+                try (AccountService bob = auth.login("bob", password)) {
+                    check(bob.list().isEmpty(), "Users have separate vaults");
+                    expect(ValidationException.class, () -> bob.delete(accountId), "Cannot delete another user's account");
+                }
+                Path vault = root.resolve(userId + ".vault");
+                byte[] original = Files.readAllBytes(vault);
+                byte[] changed = original.clone();
+                changed[changed.length - 1] ^= 1;
+                Files.write(vault, changed);
+                expect(GeneralSecurityException.class, () -> auth.login("alice", password), "Corrupt vault blocks login");
+                check(Arrays.equals(changed, Files.readAllBytes(vault)), "Corrupt vault is not silently replaced");
+                Files.write(vault, original);
+                Files.move(vault, root.resolve("missing-test.vault"));
+                expect(IOException.class, () -> auth.login("alice", password), "Missing vault blocks login");
+                check(!Files.exists(vault), "Missing vault is not silently recreated");
+                Files.move(root.resolve("missing-test.vault"), vault);
+                try (AccountService session = auth.login("alice", password)) { session.delete(accountId); }
+                try (AccountService session = auth.login("alice", password)) {
+                    check(session.list().isEmpty(), "Delete persists");
+                    session.close();
+                    expect(IllegalStateException.class, session::list, "Closed session cannot be reused");
+                }
+                Path registry = root.resolve("users.properties");
+                byte[] metadata = Files.readAllBytes(registry);
+                Files.writeString(registry, "version=broken");
+                expect(IOException.class, store::loadUsers, "Damaged registry is rejected");
+                check(Files.readString(registry).equals("version=broken"), "Registry is not silently reset");
+                Files.write(registry, metadata);
+            }
+        } finally {
+            Arrays.fill(password, '\0');
+            // This tree was created by this test; never touch the real data directory.
+            try (var paths = Files.walk(root)) {
+                for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) { Files.deleteIfExists(path); }
+            }
+        }
+    }
+
+    @FunctionalInterface
+    private interface CheckedAction { void run() throws Exception; }
+
+    private static void expect(Class<? extends Exception> type, CheckedAction action, String message) throws Exception {
+        try { action.run(); }
+        catch (Exception exception) {
+            if (type.isInstance(exception)) { checks++; return; }
+            throw new AssertionError(message + ": unexpected exception", exception);
+        }
+        throw new AssertionError(message + ": expected " + type.getSimpleName());
     }
 
     private static void analysisChecks() throws Exception {
