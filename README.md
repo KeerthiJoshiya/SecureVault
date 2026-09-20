@@ -1,8 +1,8 @@
 # SecureVault
 
 A Core Java personal digital security advisor for the CS5304 Java PBL.
-Analyze password strength, reuse, and predictable patterns across your accounts,
-then receive an explainable risk score and personalized recommendations.
+Analyze password strength, reuse, and predictable patterns in a clean Java Swing
+desktop interface, then receive an explainable score and recommendations.
 Use fictional account credentials when demonstrating this educational project.
 
 ## Requirements
@@ -19,8 +19,8 @@ Open a terminal in this repository and run:
 
 Choose **2. Register**, create a login password of at least 12 characters, then
 choose **1. Login**. Add fictional accounts and choose **6. Security report**.
-Passwords are hidden in supported terminals. IDE/redirected consoles may echo
-input; the app tells you when hidden input is unavailable.
+The default application opens a desktop window with login, account management,
+security report, and recommendation screens.
 
 All successful account changes are saved automatically. Restarting and logging
 in restores them. After five failed logins, wait 60 seconds to try again.
@@ -35,6 +35,7 @@ There is no forgotten-password recovery in this version.
 - Salted PBKDF2 login verifiers and AES-GCM encrypted account persistence.
 - Invalid-input handling, confirmation before deletion, and safe end-of-input.
 - Repeatable tests for analysis, authentication, persistence and failure cases.
+- A clean Swing desktop interface with forms, tables, navigation, and dialogs.
 
 ## Manual compile and run (PowerShell)
 
@@ -92,5 +93,7 @@ Run from the repository root to use its `data/` folder. For a separate demo vaul
 `java -cp out securevault.Main "path/to/demo-data"`.
 
 The app supports one process per data folder, up to 1,000 local users and 500
-accounts per user. It uses file persistence, not JDBC; the UI is console-based,
-not Swing. It compiles with `--release 21`; no preview features are used.
+accounts per user. It uses Swing with file persistence rather than JDBC.
+It compiles with `--release 21`; no preview features are used.
+Swing is now the default interface. The original console interface remains only
+for automated testing and can be started with `java -cp out securevault.Main --console`.

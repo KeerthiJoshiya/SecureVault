@@ -115,7 +115,7 @@ public final class TestRunner {
         String javaExecutable = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         Path output = root.resolve(UUID.randomUUID() + ".txt");
         Process process = new ProcessBuilder(javaExecutable, "-cp", System.getProperty("java.class.path"),
-                "securevault.Main", root.resolve("data").toString())
+                "securevault.Main", "--console", root.resolve("data").toString())
                 .redirectErrorStream(true).redirectOutput(output.toFile()).start();
         try {
             try (var stdin = process.getOutputStream()) {

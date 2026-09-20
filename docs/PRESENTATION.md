@@ -8,10 +8,10 @@ patterns. It calculates a documented score and gives account-specific advice."
 
 ## Five-minute demo
 
-Use fictional information throughout. Start `run.cmd` in a terminal.
+Use fictional information throughout. Start `run.cmd`; the Swing window opens.
 
-1. Register `demo_student` with the fictional login password `DemoLogin!8427`.
-2. Log in. Open Security report before adding accounts: the score is N/A.
+1. Open the Register tab and create `demo_student` with the fictional login password `DemoLogin!8427`.
+2. Log in. Select Security report before adding accounts: the score is N/A.
 3. Add these accounts using category 1 (EMAIL), 2 (SOCIAL), and 4 (WORK):
 
    | Platform | Username | Fictional account password |
@@ -24,8 +24,8 @@ Use fictional information throughout. Start `run.cmd` in a terminal.
    each scores `max(0, 50 - 30 - 20) = 0`. Work scores 100. Overall:
    `round((0 + 0 + 100) / 3) = 33/100`. Two accounts are CRITICAL.
 5. Search `mail`; show the matching account without revealing its password.
-6. Update Social's password to `T6!vN8$bH2&jC5@r`. Press Enter to keep other
-   fields. Regenerate the report: Mail scores 30, Social 100, Work 100;
+6. Select Social, choose Update, and change its password to `T6!vN8$bH2&jC5@r`.
+   Regenerate the report: Mail scores 30, Social 100, Work 100;
    the overall score becomes 77/100 because reuse was removed for both accounts.
 7. Log out, exit, restart, and log in. Show that updated accounts remain.
 8. Demonstrate deletion first with cancellation, then confirmation if desired.
@@ -75,7 +75,7 @@ implementations -> `RiskAnalyzer` -> `SecurityAdvisor` -> `SecurityReport` -> UI
 3. AccountAnalysis, RiskAnalyzer, SecurityAdvisor, SecurityReport, engine.
 4. User, AuthenticationService, AccountService.
 5. PasswordHasher, VaultEncryption, FileStore.
-6. ConsoleUI and TestRunner.
+6. SwingUI, AccountDialog, ConsoleUI, and TestRunner.
 
 Run `test.cmd` to demonstrate repeatable verification. Explain a test's expected
 behavior rather than claiming passing tests prove software can never fail.

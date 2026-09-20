@@ -4,8 +4,9 @@
 
 - `src/` contains Java source code. `securevault` is the root **package**.
 - `Main.java` contains the **static main method**, where execution starts.
-- `ui/ConsoleUI.java` owns console interaction. A **loop** keeps the menu open;
-  a **switch** chooses an action. Business rules belong outside this class.
+- `ui/SwingUI.java` owns the desktop window, navigation, tables, and event
+  listeners. `AccountDialog.java` owns the add/update form. Business rules
+  remain outside these UI classes.
 - `model/Account.java` represents one online account. Its **private fields**
   demonstrate **encapsulation**. A **constructor** creates a valid object.
   Methods expose controlled access to its state.
@@ -123,8 +124,8 @@ save failures without touching real app data.
 store. This is **constructor dependency injection** without a framework: the
 required object is simply passed into a constructor.
 
-`ConsoleUI` constructs `AuthenticationService`. A successful login returns an
-`AccountService` session. Menus call its CRUD methods; report options pass its
+`SwingUI` is the default desktop interface. A successful login returns an
+`AccountService` session. Buttons call its CRUD methods; report screens pass its
 account list into `SecurityAnalysisEngine`. Logout closes the session.
 
 Console helpers avoid repeated input code. `Integer.parseInt` converts numeric
@@ -135,7 +136,13 @@ terminals; the fallback is for IDEs and redirected input.
 Reports are regenerated on request, so updates/deletions cannot leave a stale
 cached score. An empty vault displays N/A rather than a misleading score.
 
-`build.cmd` compiles source files; `run.cmd` builds and launches the app;
+`AccountDialog` is a modal Swing form for adding and updating accounts. It keeps
+form validation and password confirmation separate from the main dashboard.
+
+The original `ConsoleUI` remains as a lightweight fallback used by integration
+tests. `Main --console` selects it; normal startup selects `SwingUI`.
+
+`build.cmd` compiles source files; `run.cmd` builds and launches the Swing app;
 `test.cmd` builds and runs the checks. They are Windows helper scripts.
 `docs/PRESENTATION.md` supplies a reproducible demo and short viva answers.
 
@@ -147,7 +154,10 @@ arrays, strings/StringBuilder, generic collections, maps/sets, streams/lambdas,
 exceptions, finally, byte/character I/O, and try-with-resources.
 
 Standard Java security APIs are an additional practical topic, explained here.
-The project does not claim to demonstrate every syllabus item. JDBC, Swing,
-threads, cloning, and preview features are not required for this console/file
-version. Interface implementation is not presented as class inheritance; the
+The project does not claim to demonstrate every syllabus item. JDBC, explicit
+worker threads, cloning, and preview features are outside this file-based version.
+Swing now demonstrates `JFrame`, `JPanel`, tables, dialogs, layouts, event
+listeners, `SwingWorker`, and the Event Dispatch Thread. Login and registration
+derive secure password values in a worker so the window remains responsive.
+Interface implementation is not class inheritance; the
 exception subclass provides the concrete inheritance example.
