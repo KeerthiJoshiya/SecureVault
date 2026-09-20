@@ -21,12 +21,12 @@ Use fictional information throughout. Start `run.cmd`; the Swing window opens.
    | Work | learner | V9!mR2$kL7&zP4@x |
 
 4. Open Security report. Mail and Social are MODERATE, reused and predictable:
-   each scores `max(0, 50 - 30 - 20) = 0`. Work scores 100. Overall:
-   `round((0 + 0 + 100) / 3) = 33/100`. Two accounts are CRITICAL.
+   each scores `max(0, 60 - 25 - 20) = 15`. Work scores 100. Overall:
+   `round((15 + 15 + 100) / 3) = 43/100`. Two accounts are CRITICAL.
 5. Search `mail`; show the matching account without revealing its password.
 6. Select Social, choose Update, and change its password to `T6!vN8$bH2&jC5@r`.
-   Regenerate the report: Mail scores 30, Social 100, Work 100;
-   the overall score becomes 77/100 because reuse was removed for both accounts.
+   Regenerate the report: Mail scores 40, Social 100, Work 100;
+   the overall score becomes 80/100 because reuse was removed for both accounts.
 7. Log out, exit, restart, and log in. Show that updated accounts remain.
 8. Demonstrate deletion first with cancellation, then confirmation if desired.
 

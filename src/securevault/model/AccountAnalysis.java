@@ -15,6 +15,8 @@ public final class AccountAnalysis {
     private int reuseCount = 1;
     private final Set<String> patterns = new LinkedHashSet<>();
     private int score;
+    private int reusePenalty;
+    private int patternPenalty;
     private RiskLevel risk = RiskLevel.CRITICAL;
 
     public AccountAnalysis(Account account) {
@@ -30,12 +32,16 @@ public final class AccountAnalysis {
     public int getReuseCount() { return reuseCount; }
     public Set<String> getPatterns() { return java.util.Collections.unmodifiableSet(patterns); }
     public int getScore() { return score; }
+    public int getReusePenalty() { return reusePenalty; }
+    public int getPatternPenalty() { return patternPenalty; }
     public RiskLevel getRisk() { return risk; }
     public void setStrength(PasswordStrength strength) { this.strength = strength; }
     public void setReuseCount(int count) { reuseCount = count; }
     public void addPattern(String reason) { patterns.add(reason); }
-    public void setRiskAndScore(RiskLevel risk, int score) {
+    public void setRiskAndScore(RiskLevel risk, int score, int reusePenalty, int patternPenalty) {
         this.risk = risk;
         this.score = score;
+        this.reusePenalty = reusePenalty;
+        this.patternPenalty = patternPenalty;
     }
 }

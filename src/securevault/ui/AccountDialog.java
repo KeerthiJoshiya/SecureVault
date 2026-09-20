@@ -35,6 +35,11 @@ final class AccountDialog extends JDialog {
                 existing == null ? "Add account" : "Update account", Dialog.ModalityType.APPLICATION_MODAL);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setResizable(false);
+        SwingUI.styleField(platformField);
+        SwingUI.styleField(usernameField);
+        SwingUI.styleField(typeBox);
+        SwingUI.styleField(passwordField);
+        SwingUI.styleField(confirmField);
         build(existing);
         pack();
         setMinimumSize(new Dimension(460, getHeight()));
@@ -77,6 +82,7 @@ final class AccountDialog extends JDialog {
         save.addActionListener(event -> accept(existing != null));
         JPanel actions = new JPanel();
         actions.setBorder(BorderFactory.createEmptyBorder(0, 16, 14, 16));
+        actions.setLayout(new java.awt.GridLayout(1, 2, 10, 0));
         actions.add(cancel);
         actions.add(save);
 

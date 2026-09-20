@@ -24,6 +24,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -41,6 +42,7 @@ import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.plaf.basic.BasicButtonUI;
 import securevault.enums.PasswordStrength;
 import securevault.exception.ValidationException;
 import securevault.model.Account;
@@ -105,8 +107,8 @@ public final class SwingUI {
 
     private void buildFrame() {
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        frame.setMinimumSize(new Dimension(960, 640));
-        frame.setSize(1120, 720);
+        frame.setMinimumSize(new Dimension(1000, 680));
+        frame.setSize(1180, 760);
         frame.setLocationRelativeTo(null);
         frame.addWindowListener(new WindowAdapter() {
             @Override public void windowClosing(WindowEvent event) { shutdown(); }
@@ -124,7 +126,7 @@ public final class SwingUI {
         card.setBackground(CARD);
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(218, 226, 235)), new EmptyBorder(28, 34, 30, 34)));
-        card.setPreferredSize(new Dimension(500, 540));
+        card.setPreferredSize(new Dimension(520, 520));
 
         JPanel heading = new JPanel();
         heading.setOpaque(false);
@@ -153,6 +155,8 @@ public final class SwingUI {
         JPanel panel = formPanel();
         JTextField username = new JTextField(26);
         JPasswordField password = new JPasswordField(26);
+        styleField(username);
+        styleField(password);
         JButton login = primaryButton("Login securely");
         addFormField(panel, 0, "Username or email", username);
         addFormField(panel, 1, "Password", password);
@@ -179,6 +183,9 @@ public final class SwingUI {
         JTextField username = new JTextField(26);
         JPasswordField password = new JPasswordField(26);
         JPasswordField confirmation = new JPasswordField(26);
+        styleField(username);
+        styleField(password);
+        styleField(confirmation);
         JButton register = primaryButton("Create account");
         addFormField(panel, 0, "Username or email", username);
         addFormField(panel, 1, "Password (12-256 characters)", password);
@@ -264,7 +271,7 @@ public final class SwingUI {
         sidebar.add(Box.createVerticalStrut(12));
         JButton logout = secondaryButton("Logout");
         logout.setAlignmentX(Component.LEFT_ALIGNMENT);
-        logout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        logout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         logout.addActionListener(event -> logout());
         sidebar.add(logout);
         return sidebar;
@@ -279,21 +286,29 @@ public final class SwingUI {
         accountCount.setForeground(MUTED);
         titleRow.add(accountCount, BorderLayout.EAST);
 
-        JPanel tools = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel tools = new JPanel();
+        tools.setLayout(new BoxLayout(tools, BoxLayout.Y_AXIS));
         tools.setOpaque(false);
+        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        searchRow.setOpaque(false);
+        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        actionRow.setOpaque(false);
         searchField.putClientProperty("JTextField.placeholderText", "Search accounts");
+        styleField(searchField);
         JButton search = secondaryButton("Search");
         JButton clear = secondaryButton("Show all");
         JButton add = primaryButton("Add account");
         JButton edit = secondaryButton("Update");
         JButton delete = dangerButton("Delete");
-        tools.add(searchField);
-        tools.add(search);
-        tools.add(clear);
-        tools.add(Box.createHorizontalStrut(12));
-        tools.add(add);
-        tools.add(edit);
-        tools.add(delete);
+        searchRow.add(searchField);
+        searchRow.add(search);
+        searchRow.add(clear);
+        actionRow.add(add);
+        actionRow.add(edit);
+        actionRow.add(delete);
+        tools.add(searchRow);
+        tools.add(Box.createVerticalStrut(9));
+        tools.add(actionRow);
 
         accountTable.setRowHeight(34);
         accountTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -423,7 +438,7 @@ public final class SwingUI {
 
     private JScrollPane reportTable(SecurityReport report) {
         DefaultTableModel model = new DefaultTableModel(
-                new String[] {"Platform", "Strength", "Risk", "Score", "Findings"}, 0) {
+                new String[] {"Platform", "Strength", "Risk", "Score", "Calculation", "Findings"}, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
         for (AccountAnalysis result : report.getAnalyses()) {
@@ -434,14 +449,17 @@ public final class SwingUI {
                 findings.append(pattern);
             }
             if (findings.isEmpty()) { findings.append("No issues detected"); }
+            String calculation = result.getStrength().getBaseScore() + " - " + result.getReusePenalty()
+                    + " - " + result.getPatternPenalty() + " = " + result.getScore();
             model.addRow(new Object[] {result.getPlatform(), result.getStrength(), result.getRisk(),
-                    result.getScore() + "/100", findings});
+                    result.getScore() + "/100", calculation, findings});
         }
         JTable table = new JTable(model);
         table.setRowHeight(34);
         table.setFillsViewportHeight(true);
         table.getTableHeader().setReorderingAllowed(false);
-        table.getColumnModel().getColumn(4).setPreferredWidth(400);
+        table.getColumnModel().getColumn(4).setPreferredWidth(170);
+        table.getColumnModel().getColumn(5).setPreferredWidth(380);
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createLineBorder(new Color(218, 226, 235)));
         return scroll;
@@ -616,34 +634,54 @@ public final class SwingUI {
 
     private JButton navButton(String text, Runnable action) {
         JButton button = new JButton(text);
+        standardizeButton(button);
         button.setHorizontalAlignment(SwingConstants.LEFT);
-        button.setFocusPainted(false);
         button.setBackground(CARD);
         button.setForeground(TEXT);
         button.setBorder(new EmptyBorder(10, 12, 10, 12));
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        button.setPreferredSize(new Dimension(180, 42));
         button.addActionListener(event -> action.run());
         return button;
     }
 
     static JButton primaryButton(String text) {
         JButton button = new JButton(text);
+        standardizeButton(button);
         button.setBackground(PRIMARY);
         button.setForeground(Color.WHITE);
-        button.setFocusPainted(false);
-        button.setBorder(new EmptyBorder(10, 16, 10, 16));
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(PRIMARY_DARK), new EmptyBorder(9, 16, 9, 16)));
         return button;
     }
 
     static JButton secondaryButton(String text) {
         JButton button = new JButton(text);
+        standardizeButton(button);
         button.setBackground(CARD);
         button.setForeground(TEXT);
-        button.setFocusPainted(false);
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(190, 202, 216)), new EmptyBorder(8, 14, 8, 14)));
         return button;
+    }
+
+    private static void standardizeButton(JButton button) {
+        button.setUI(new BasicButtonUI());
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
+        button.setBorderPainted(true);
+        button.setFocusPainted(false);
+        button.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        button.setPreferredSize(new Dimension(132, 40));
+        button.setMinimumSize(new Dimension(132, 40));
+    }
+
+    static void styleField(JComponent field) {
+        field.setPreferredSize(new Dimension(300, 40));
+        field.setMinimumSize(new Dimension(180, 40));
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(190, 202, 216)), new EmptyBorder(7, 10, 7, 10)));
     }
 
     private JButton dangerButton(String text) {
@@ -659,7 +697,7 @@ public final class SwingUI {
     }
 
     private Color scoreColor(int score) {
-        if (score >= 75) { return new Color(25, 125, 75); }
+        if (score >= 80) { return new Color(25, 125, 75); }
         if (score >= 50) { return new Color(190, 125, 15); }
         return DANGER;
     }

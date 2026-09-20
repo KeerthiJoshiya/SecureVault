@@ -6,12 +6,13 @@ import securevault.model.AccountAnalysis;
 public final class RiskAnalyzer {
     public void calculate(AccountAnalysis result) {
         int score = result.getStrength().getBaseScore();
-        if (result.getReuseCount() > 1) { score -= 30; }
-        if (!result.getPatterns().isEmpty()) { score -= 20; }
+        int reusePenalty = result.getReuseCount() >= 3 ? 35 : result.getReuseCount() == 2 ? 25 : 0;
+        int patternPenalty = Math.min(20, result.getPatterns().size() * 10);
+        score -= reusePenalty + patternPenalty;
         score = Math.max(0, score);
         RiskLevel risk = score < 25 ? RiskLevel.CRITICAL
                 : score < 50 ? RiskLevel.HIGH
-                : score < 75 ? RiskLevel.MEDIUM : RiskLevel.LOW;
-        result.setRiskAndScore(risk, score);
+                : score < 80 ? RiskLevel.MEDIUM : RiskLevel.LOW;
+        result.setRiskAndScore(risk, score, reusePenalty, patternPenalty);
     }
 }

@@ -25,6 +25,7 @@ import securevault.security.VaultEncryption;
 import securevault.persistence.FileStore;
 import securevault.service.AccountService;
 import securevault.service.AuthenticationService;
+import securevault.ui.UiComponentChecks;
 
 /** Small executable checks; assertions remain active without the -ea option. */
 public final class TestRunner {
@@ -50,6 +51,7 @@ public final class TestRunner {
         encryptionChecks();
         persistenceChecks();
         consoleChecks();
+        check(UiComponentChecks.run() == 6, "Reusable Swing controls pass layout and contrast checks");
         System.out.println("PASS: " + checks + " checks");
     }
 
@@ -90,8 +92,8 @@ public final class TestRunner {
             check(first.contains("Please choose 1, 2 or 0."), "Invalid main menu input handled");
             check(first.contains("Passwords do not match."), "Registration confirmation handled");
             check(first.contains("Score: N/A"), "Empty vault UI does not claim a score");
-            check(first.contains("Security score       : 33/100"), "Presentation example starts at 33");
-            check(first.contains("Security score       : 77/100"), "Update refreshes score to 77");
+            check(first.contains("Security score       : 43/100"), "Presentation example starts at 43");
+            check(first.contains("Security score       : 80/100"), "Update refreshes score to 80");
             check(first.contains("Deletion cancelled."), "Delete requires confirmation");
             check(!first.contains("Welcome@123") && !first.contains("DemoLogin!8427"), "Output does not print passwords");
             String second = runConsole(root, List.of("1", "demo_student", "DemoLogin!8427",
@@ -263,9 +265,11 @@ public final class TestRunner {
         SecurityReport report = engine.analyze(List.of(first, second));
         check(report.getReusedAccountCount() == 2, "Both reused accounts are counted");
         check(report.getAnalyses().get(0).getReuseCount() == 2, "Reuse includes this account");
-        check(report.getScore() == 0, "Example score is calculated correctly");
+        check(report.getScore() == 15, "Example score is calculated correctly");
         check(report.getHighRiskCount() == 2, "Critical accounts count as high-risk");
         check(report.getAnalyses().get(0).getRisk() == RiskLevel.CRITICAL, "Critical risk threshold");
+        check(report.getAnalyses().get(0).getReusePenalty() == 25, "Two-account reuse penalty");
+        check(report.getAnalyses().get(0).getPatternPenalty() == 20, "Pattern penalty is capped");
         check(report.getAnalyses().get(0).getPatterns().size() == 2, "Common word and sequence detected");
         check(!report.getRecommendations().isEmpty(), "Findings create advice");
         SecurityReport empty = engine.analyze(List.of());
@@ -277,6 +281,10 @@ public final class TestRunner {
         check(report.getAnalyses().get(0).getPatterns().size() == 5, "Username, reverse digits, repeats, year, keyboard");
         report = engine.analyze(List.of(account("Work", "student", "V9!mR2$kL7&zP4@x")));
         check(report.getScore() == 100 && report.getHighRiskCount() == 0, "Clean unique password score");
+        report = engine.analyze(List.of(account("A", "first", "Ax7!mN4$pQ2z"),
+                account("B", "second", "Ax7!mN4$pQ2z")));
+        check(report.getScore() == 55, "Strong password reused twice keeps a nonzero explainable score");
+        check(report.getAnalyses().get(0).getRisk() == RiskLevel.MEDIUM, "Strong reused password is medium risk");
     }
 
     private static Account account(String platform, String username, String password) throws Exception {

@@ -136,6 +136,11 @@ terminals; the fallback is for IDEs and redirected input.
 Reports are regenerated on request, so updates/deletions cannot leave a stale
 cached score. An empty vault displays N/A rather than a misleading score.
 
+Primary buttons use a fixed high-contrast style, form controls share a 40-pixel
+height, and action rows use equal button widths. The account toolbar uses two
+aligned rows so controls remain visible instead of being clipped on smaller
+windows. The report includes each account's base score and separate deductions.
+
 `AccountDialog` is a modal Swing form for adding and updating accounts. It keeps
 form validation and password confirmation separate from the main dashboard.
 

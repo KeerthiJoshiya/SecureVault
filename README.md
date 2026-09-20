@@ -52,7 +52,7 @@ java -cp out securevault.Main
 .\test.cmd
 ```
 
-The current suite passes **78 checks**, including real console processes,
+The current suite passes **83 checks**, including real console processes,
 restart persistence, timed lockout, user isolation, tampered vaults, and failed
 saves. Verified on Temurin JDK 25.0.4 while compiling for Java 21 compatibility.
 Application sources also pass `javac -Xlint:all` without warnings. An actual
