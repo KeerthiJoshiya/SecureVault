@@ -28,3 +28,31 @@ Passwords are held as `char[]`; copies prevent callers from modifying an
 account's password accidentally. Arrays can be overwritten when no longer used.
 Java cannot guarantee removal of every copy from memory, so this is a useful
 precaution, not a claim that memory is perfectly protected.
+
+## Part 2: security analysis
+
+`security/` holds analysis and credential protection, separately from the menu.
+`SecurityCheck` is an **interface**, a promise that a class supplies `analyze`.
+`PasswordStrengthChecker`, `DuplicatePasswordChecker`, and `PatternChecker`
+**implement** it and **override** that method. `SecurityAnalysisEngine` stores
+them in a `List<SecurityCheck>` and calls the same method on different objects:
+this is **runtime polymorphism**. Each check receives all accounts because reuse
+is a relationship across accounts, not a property detectable from one alone.
+
+- `AccountAnalysis`: findings for one account; never includes its password.
+- `SecurityReport`: all findings, statistics, recommendations, and generation time.
+- `PasswordStrength` and `RiskLevel`: enum values instead of inconsistent strings.
+- `RiskAnalyzer`: documented points and risk thresholds, isolated for explanation.
+- `SecurityAdvisor`: personalized advice generated from actual findings.
+- `ArrayList`: ordered results and recommendations.
+- `HashMap`: groups possible matching passwords; equality resolves collisions.
+- `LinkedHashSet`: stores unique pattern reasons in stable display order.
+- **Generics** (`List<Account>`) make collection element types explicit.
+- **Streams/lambdas** filter/count report statistics. Ordinary loops handle
+  character-by-character analysis because they are easier to follow there.
+- **finally** clears temporary password arrays even when an operation fails.
+
+Presentation: "The engine depends on a common interface rather than one specific
+checker. I can add another check implementing that interface. The report uses
+streams to summarize results. Scoring is deterministic and documented in
+ANALYSIS_RULES.md, so I can calculate an example by hand."
