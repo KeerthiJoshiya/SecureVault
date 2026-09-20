@@ -116,3 +116,38 @@ buffers cannot be reliably erased; clearing our arrays is a limited precaution.
 The tests use their own temporary directory. They verify encryption, tampering,
 restart persistence, lock expiry, user isolation, CRUD, corruption handling, and
 save failures without touching real app data.
+
+## Part 4: complete application flow
+
+`Main` opens `FileStore`, verifies metadata, and constructs `ConsoleUI` with that
+store. This is **constructor dependency injection** without a framework: the
+required object is simply passed into a constructor.
+
+`ConsoleUI` constructs `AuthenticationService`. A successful login returns an
+`AccountService` session. Menus call its CRUD methods; report options pass its
+account list into `SecurityAnalysisEngine`. Logout closes the session.
+
+Console helpers avoid repeated input code. `Integer.parseInt` converts numeric
+selections; `NumberFormatException` becomes a friendly validation message.
+End-of-input exits cleanly. `Console.readPassword` hides passwords in supported
+terminals; the fallback is for IDEs and redirected input.
+
+Reports are regenerated on request, so updates/deletions cannot leave a stale
+cached score. An empty vault displays N/A rather than a misleading score.
+
+`build.cmd` compiles source files; `run.cmd` builds and launches the app;
+`test.cmd` builds and runs the checks. They are Windows helper scripts.
+`docs/PRESENTATION.md` supplies a reproducible demo and short viva answers.
+
+### Syllabus coverage and deliberate omissions
+
+Used: classes/objects, constructors, packages, encapsulation, inheritance through
+the custom exception, interface abstraction, polymorphism, enums, control flow,
+arrays, strings/StringBuilder, generic collections, maps/sets, streams/lambdas,
+exceptions, finally, byte/character I/O, and try-with-resources.
+
+Standard Java security APIs are an additional practical topic, explained here.
+The project does not claim to demonstrate every syllabus item. JDBC, Swing,
+threads, cloning, and preview features are not required for this console/file
+version. Interface implementation is not presented as class inheritance; the
+exception subclass provides the concrete inheritance example.

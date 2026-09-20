@@ -49,6 +49,7 @@ public final class TestRunner {
         analysisChecks();
         encryptionChecks();
         persistenceChecks();
+        consoleChecks();
         System.out.println("PASS: " + checks + " checks");
     }
 
@@ -72,6 +73,63 @@ public final class TestRunner {
         first[first.length - 1] ^= 1;
         expect(GeneralSecurityException.class, () -> crypto.decrypt(first, hash, owner), "Tampered vault is rejected");
         expect(GeneralSecurityException.class, () -> crypto.decrypt(new byte[3], hash, owner), "Truncated vault is rejected");
+    }
+
+    private static void consoleChecks() throws Exception {
+        Path root = Files.createTempDirectory("securevault-console-tests-");
+        try {
+            String first = runConsole(root, List.of(
+                    "invalid", "2", "demo_student", "DemoLogin!8427", "mismatch",
+                    "2", "demo_student", "DemoLogin!8427", "DemoLogin!8427",
+                    "1", "demo_student", "DemoLogin!8427", "6",
+                    "1", "Mail", "learner", "1", "Welcome@123",
+                    "1", "Social", "learner", "2", "Welcome@123",
+                    "1", "Work", "learner", "4", "V9!mR2$kL7&zP4@x",
+                    "6", "3", "2", "", "", "", "T6!vN8$bH2&jC5@r",
+                    "6", "4", "1", "no", "5", "mail", "0", "0"));
+            check(first.contains("Please choose 1, 2 or 0."), "Invalid main menu input handled");
+            check(first.contains("Passwords do not match."), "Registration confirmation handled");
+            check(first.contains("Score: N/A"), "Empty vault UI does not claim a score");
+            check(first.contains("Security score       : 33/100"), "Presentation example starts at 33");
+            check(first.contains("Security score       : 77/100"), "Update refreshes score to 77");
+            check(first.contains("Deletion cancelled."), "Delete requires confirmation");
+            check(!first.contains("Welcome@123") && !first.contains("DemoLogin!8427"), "Output does not print passwords");
+            String second = runConsole(root, List.of("1", "demo_student", "DemoLogin!8427",
+                    "2", "3", "9999999999999999999999999", "4", "1", "yes", "6", "0", "0"));
+            check(second.contains("Social | learner | SOCIAL | Password: [hidden]"), "CLI restart restores accounts");
+            check(second.contains("Enter a whole number from 0 to 3."), "Oversized numeric input is handled");
+            check(second.contains("Account deleted and saved."), "Confirmed deletion works through UI");
+            check(second.contains("Security score       : 100/100"), "Report recalculates after deletion");
+            String eof = runConsole(root, List.of("1", "demo_student", "DemoLogin!8427"));
+            check(eof.contains("Input ended."), "EOF during a session exits cleanly");
+            String afterEof = runConsole(root, List.of("0"));
+            check(afterEof.contains("Goodbye."), "EOF releases file lock for next process");
+        } finally {
+            try (var paths = Files.walk(root)) {
+                for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) { Files.deleteIfExists(path); }
+            }
+        }
+    }
+
+    private static String runConsole(Path root, List<String> input) throws Exception {
+        String javaExecutable = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        Path output = root.resolve(UUID.randomUUID() + ".txt");
+        Process process = new ProcessBuilder(javaExecutable, "-cp", System.getProperty("java.class.path"),
+                "securevault.Main", root.resolve("data").toString())
+                .redirectErrorStream(true).redirectOutput(output.toFile()).start();
+        try {
+            try (var stdin = process.getOutputStream()) {
+                stdin.write((String.join("\n", input) + "\n").getBytes(StandardCharsets.UTF_8));
+            }
+            if (!process.waitFor(45, java.util.concurrent.TimeUnit.SECONDS)) {
+                throw new AssertionError("Console flow timed out");
+            }
+            String text = Files.readString(output);
+            if (process.exitValue() != 0) { throw new AssertionError("Console failed: " + text); }
+            return text;
+        } finally {
+            if (process.isAlive()) { process.destroyForcibly().waitFor(); }
+        }
     }
 
     private static void persistenceChecks() throws Exception {
