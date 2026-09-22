@@ -42,6 +42,8 @@ is a relationship across accounts, not a property detectable from one alone.
 
 - `AccountAnalysis`: findings for one account; never includes its password.
 - `SecurityReport`: all findings, statistics, recommendations, and generation time.
+- `RecommendationGroup`: one account's identity, score, risk, and advice. Keeping
+  this as a model lets both the Swing and console interfaces present the same result.
 - `PasswordStrength` and `RiskLevel`: enum values instead of inconsistent strings.
 - `RiskAnalyzer`: documented points and risk thresholds, isolated for explanation.
 - `SecurityAdvisor`: personalized advice generated from actual findings.
@@ -142,6 +144,8 @@ Primary buttons use a fixed high-contrast style, form controls share a 40-pixel
 height, and action rows use equal button widths. The account toolbar uses two
 aligned rows so controls remain visible instead of being clipped on smaller
 windows. The report includes each account's base score and separate deductions.
+The recommendation screen sorts account cards from CRITICAL to LOW and keeps
+each account's actions together, so advice is no longer mixed into one list.
 
 `AccountDialog` is a modal Swing form for adding and updating accounts. It keeps
 form validation and password confirmation separate from the main dashboard.

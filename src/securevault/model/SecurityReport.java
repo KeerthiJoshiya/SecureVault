@@ -7,19 +7,23 @@ import securevault.enums.RiskLevel;
 
 public final class SecurityReport {
     private final List<AccountAnalysis> analyses;
-    private final List<String> recommendations;
+    private final List<RecommendationGroup> recommendationGroups;
     private final Instant generatedAt;
     private final int score;
 
-    public SecurityReport(List<AccountAnalysis> analyses, List<String> recommendations) {
+    public SecurityReport(List<AccountAnalysis> analyses, List<RecommendationGroup> recommendationGroups) {
         this.analyses = List.copyOf(analyses);
-        this.recommendations = List.copyOf(recommendations);
+        this.recommendationGroups = List.copyOf(recommendationGroups);
         generatedAt = Instant.now();
         score = (int) Math.round(analyses.stream().mapToInt(AccountAnalysis::getScore).average().orElse(0));
     }
 
     public List<AccountAnalysis> getAnalyses() { return analyses; }
-    public List<String> getRecommendations() { return recommendations; }
+    public List<RecommendationGroup> getRecommendationGroups() { return recommendationGroups; }
+    public List<String> getRecommendations() {
+        return recommendationGroups.stream().flatMap(group -> group.getRecommendations().stream()
+                .map(text -> group.getPlatform() + " (" + group.getUsername() + "): " + text)).toList();
+    }
     public Instant getGeneratedAt() { return generatedAt; }
     public int getScore() { return score; }
     public long countStrength(PasswordStrength strength) {

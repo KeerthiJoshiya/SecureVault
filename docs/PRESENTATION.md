@@ -27,8 +27,13 @@ Use fictional information throughout. Start `run.cmd`; the Swing window opens.
 6. Select Social, choose Update, and change its password to `T6!vN8$bH2&jC5@r`.
    Regenerate the report: Mail scores 40, Social 100, Work 100;
    the overall score becomes 80/100 because reuse was removed for both accounts.
-7. Log out, exit, restart, and log in. Show that updated accounts remain.
-8. Demonstrate deletion first with cancellation, then confirmation if desired.
+7. Open Recommendations. Show that every account has a separate card and that
+   urgent accounts appear first instead of mixing all suggestions together.
+8. For the novelty demonstration, set Mail to `FamilyX@2025` and Social to
+   `FamilyX@2026`. The report marks both as similar across different platforms,
+   subtracts 15 points, and names the related platform without displaying either password.
+9. Log out, exit, restart, and log in. Show that updated accounts remain.
+10. Demonstrate deletion first with cancellation, then confirmation if desired.
 
 For a lockout demo, log out and submit a wrong password five times. Restarting
 does not remove the 60-second lock. Automated checks demonstrate expiry instantly
@@ -40,7 +45,7 @@ Add account: `ConsoleUI.add` -> `AccountService.add` -> `Account` validation ->
 `FileStore.saveAccounts` -> `VaultEncryption.encrypt` -> encrypted file.
 Only after a successful save does the service add the object to its live list.
 
-Report: `ConsoleUI` -> `SecurityAnalysisEngine` -> three `SecurityCheck`
+Report: `ConsoleUI` -> `SecurityAnalysisEngine` -> four `SecurityCheck`
 implementations -> `RiskAnalyzer` -> `SecurityAdvisor` -> `SecurityReport` -> UI.
 
 ## Questions you should be able to answer
@@ -65,13 +70,13 @@ implementations -> `RiskAnalyzer` -> `SecurityAdvisor` -> `SecurityReport` -> UI
 | Why hashing and encryption? | Login needs verification; saved account passwords must be read again for analysis. |
 | What is a salt? | Random data used in derivation so equal passwords do not get equal stored verifiers. |
 | Why not a database? | The approved scope uses file I/O; FileStore isolates persistence so it can change later. |
-| What makes this different? | It checks habits across accounts and explains risks beyond simple storage. |
+| What makes this different? | It detects exact reuse and related password families across different platforms, then explains the relationship without storing passwords in the finding. |
 | Is 100/100 a security guarantee? | No. It means no deductions under the documented educational rules. |
 
 ## Suggested order for reading code
 
 1. Main, Account, AccountType, ValidationException.
-2. SecurityCheck and its three implementations.
+2. SecurityCheck and its four implementations.
 3. AccountAnalysis, RiskAnalyzer, SecurityAdvisor, SecurityReport, engine.
 4. User, AuthenticationService, AccountService.
 5. PasswordHasher, VaultEncryption, FileStore.

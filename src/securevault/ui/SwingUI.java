@@ -27,7 +27,6 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
@@ -35,6 +34,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
@@ -44,9 +44,11 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.plaf.basic.BasicButtonUI;
 import securevault.enums.PasswordStrength;
+import securevault.enums.RiskLevel;
 import securevault.exception.ValidationException;
 import securevault.model.Account;
 import securevault.model.AccountAnalysis;
+import securevault.model.RecommendationGroup;
 import securevault.model.SecurityReport;
 import securevault.persistence.FileStore;
 import securevault.security.SecurityAnalysisEngine;
@@ -476,19 +478,106 @@ public final class SwingUI {
         SecurityReport report = analysisEngine.analyze(session.list());
         advicePanel.removeAll();
         advicePanel.setOpaque(false);
-        advicePanel.add(pageTitle("Recommendations", "Advice created from the current analysis findings."), BorderLayout.NORTH);
+        advicePanel.add(pageTitle("Recommendations", "Each account has its own prioritized action list."), BorderLayout.NORTH);
         if (report.getAnalyses().isEmpty()) {
             advicePanel.add(emptyState("No recommendations yet", "Add an account to receive personalized advice."), BorderLayout.CENTER);
         } else {
-            JList<String> list = new JList<>(report.getRecommendations().toArray(String[]::new));
-            list.setFixedCellHeight(38);
-            list.setBorder(new EmptyBorder(8, 10, 8, 10));
-            list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            JScrollPane scroll = new JScrollPane(list);
-            scroll.setBorder(BorderFactory.createLineBorder(new Color(218, 226, 235)));
+            JPanel recommendations = new JPanel();
+            recommendations.setLayout(new BoxLayout(recommendations, BoxLayout.Y_AXIS));
+            recommendations.setBackground(BACKGROUND);
+            recommendations.setBorder(new EmptyBorder(2, 2, 12, 10));
+            recommendations.add(recommendationSummary(report));
+            recommendations.add(Box.createVerticalStrut(12));
+            for (RecommendationGroup group : report.getRecommendationGroups()) {
+                JPanel card = recommendationCard(group);
+                card.setAlignmentX(Component.LEFT_ALIGNMENT);
+                recommendations.add(card);
+                recommendations.add(Box.createVerticalStrut(10));
+            }
+            JScrollPane scroll = new JScrollPane(recommendations);
+            scroll.setBorder(null);
+            scroll.getVerticalScrollBar().setUnitIncrement(16);
+            scroll.getViewport().setBackground(BACKGROUND);
             advicePanel.add(scroll, BorderLayout.CENTER);
         }
         showContent("advice");
+    }
+
+    private JPanel recommendationSummary(SecurityReport report) {
+        JPanel card = new JPanel(new BorderLayout(0, 6));
+        card.setBackground(new Color(235, 243, 251));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(184, 207, 229)), new EmptyBorder(14, 16, 14, 16)));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 92));
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel heading = new JLabel("Overall priority");
+        heading.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        heading.setForeground(PRIMARY_DARK);
+        String summary;
+        if (report.getReusedAccountCount() == 0 && report.getSimilarPasswordAccountCount() == 0) {
+            summary = "No cross-platform password relationships detected.";
+        } else {
+            summary = report.getReusedAccountCount() + " account(s) use an exact duplicate; "
+                    + report.getSimilarPasswordAccountCount() + " account(s) use a similar password.";
+        }
+        JLabel detail = new JLabel(summary);
+        detail.setForeground(TEXT);
+        card.add(heading, BorderLayout.NORTH);
+        card.add(detail, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JPanel recommendationCard(RecommendationGroup group) {
+        JPanel card = new JPanel(new BorderLayout(12, 10));
+        card.setBackground(CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(218, 226, 235)), new EmptyBorder(14, 16, 14, 16)));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+                110 + group.getRecommendations().size() * 42));
+
+        JPanel heading = new JPanel(new BorderLayout(12, 0));
+        heading.setOpaque(false);
+        JPanel account = new JPanel();
+        account.setOpaque(false);
+        account.setLayout(new BoxLayout(account, BoxLayout.Y_AXIS));
+        JLabel platform = new JLabel(group.getPlatform());
+        platform.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 17));
+        platform.setForeground(TEXT);
+        JLabel username = new JLabel(group.getUsername());
+        username.setForeground(MUTED);
+        account.add(platform);
+        account.add(Box.createVerticalStrut(2));
+        account.add(username);
+        heading.add(account, BorderLayout.WEST);
+
+        JLabel status = new JLabel(group.getRisk() + "  |  " + group.getScore() + "/100");
+        status.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        status.setForeground(riskColor(group.getRisk()));
+        heading.add(status, BorderLayout.EAST);
+
+        JTextArea actions = new JTextArea();
+        actions.setEditable(false);
+        actions.setFocusable(false);
+        actions.setOpaque(false);
+        actions.setLineWrap(true);
+        actions.setWrapStyleWord(true);
+        actions.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        actions.setForeground(TEXT);
+        actions.setText(group.getRecommendations().stream()
+                .map(text -> "\u2022 " + text)
+                .collect(java.util.stream.Collectors.joining("\n")));
+        actions.setRows(group.getRecommendations().size());
+        card.add(heading, BorderLayout.NORTH);
+        card.add(actions, BorderLayout.CENTER);
+        return card;
+    }
+
+    private Color riskColor(RiskLevel risk) {
+        return switch (risk) {
+            case LOW -> new Color(25, 125, 75);
+            case MEDIUM -> new Color(190, 125, 15);
+            case HIGH, CRITICAL -> DANGER;
+        };
     }
 
     private void logout() {

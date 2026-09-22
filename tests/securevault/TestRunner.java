@@ -286,6 +286,7 @@ public final class TestRunner {
         check(report.getScore() == 55, "Strong password reused twice keeps a nonzero explainable score");
         check(report.getAnalyses().get(0).getRisk() == RiskLevel.MEDIUM, "Strong reused password is medium risk");
         similarityChecks(engine);
+        recommendationChecks(engine);
     }
 
     private static void similarityChecks(SecurityAnalysisEngine engine) throws Exception {
@@ -334,6 +335,35 @@ public final class TestRunner {
                 "Related accounts remain visible even when exact reuse dominates scoring");
         check(report.getRecommendations().stream().noneMatch(text -> text.contains("Ax7!mN4")),
                 "Recommendations never expose password values");
+    }
+
+    private static void recommendationChecks(SecurityAnalysisEngine engine) throws Exception {
+        SecurityReport report = engine.analyze(List.of(
+                account("Mail", "learner", "Welcome@123"),
+                account("Social", "learner", "Welcome@123"),
+                account("Work", "learner", "V9!mR2$kL7&zP4@x")));
+        check(report.getRecommendationGroups().size() == 3,
+                "Every account receives its own recommendation group");
+        check(report.getRecommendationGroups().get(0).getRisk() == RiskLevel.CRITICAL,
+                "Recommendation groups put critical accounts first");
+        check(report.getRecommendationGroups().get(2).getRisk() == RiskLevel.LOW,
+                "Low-risk accounts appear after urgent recommendations");
+        check(report.getRecommendationGroups().stream().anyMatch(group -> group.getPlatform().equals("Mail")
+                && group.getUsername().equals("learner")), "Recommendation group identifies its account");
+        check(report.getRecommendationGroups().get(2).getRecommendations().stream()
+                .anyMatch(text -> text.startsWith("No issues detected")),
+                "Clean accounts receive a clear maintenance message");
+
+        report = engine.analyze(List.of(
+                account("Mail", "first", "FamilyX@2025"),
+                account("Social", "second", "FamilyX@2026")));
+        check(report.getRecommendationGroups().stream()
+                .filter(group -> group.getPlatform().equals("Mail"))
+                .flatMap(group -> group.getRecommendations().stream())
+                .anyMatch(text -> text.contains("Social")),
+                "Similar-password advice names the related platform");
+        check(report.getRecommendations().stream().allMatch(text -> text.contains(":")),
+                "Console recommendations retain an account label");
     }
 
     private static Account account(String platform, String username, String password) throws Exception {
