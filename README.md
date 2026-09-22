@@ -30,7 +30,7 @@ There is no forgotten-password recovery in this version.
 
 - Registration, login, persistent failed-attempt tracking and timed lockout.
 - Separate per-user vaults; add, list, edit, delete and search accounts.
-- Password strength, exact reuse detection, and predictable-pattern checks.
+- Password strength, exact reuse, similar-password families, and predictable-pattern checks.
 - Per-account risk, overall score, statistics, and personalized advice.
 - Salted PBKDF2 login verifiers and AES-GCM encrypted account persistence.
 - Invalid-input handling, confirmation before deletion, and safe end-of-input.
@@ -52,7 +52,7 @@ java -cp out securevault.Main
 .\test.cmd
 ```
 
-The current suite passes **83 checks**, including real console processes,
+The current suite passes **96 checks**, including real console processes,
 restart persistence, timed lockout, user isolation, tampered vaults, and failed
 saves. Verified on Temurin JDK 25.0.4 while compiling for Java 21 compatibility.
 Application sources also pass `javac -Xlint:all` without warnings. An actual

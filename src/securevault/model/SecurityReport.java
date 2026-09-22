@@ -31,6 +31,9 @@ public final class SecurityReport {
     public long getPatternAccountCount() {
         return analyses.stream().filter(a -> !a.getPatterns().isEmpty()).count();
     }
+    public long getSimilarPasswordAccountCount() {
+        return analyses.stream().filter(a -> !a.getSimilarPasswords().isEmpty()).count();
+    }
     public long getHighRiskCount() {
         return analyses.stream().filter(a -> a.getRisk() == RiskLevel.HIGH
                 || a.getRisk() == RiskLevel.CRITICAL).count();

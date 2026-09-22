@@ -16,6 +16,9 @@ public final class SecurityAdvisor {
             if (result.getReuseCount() > 1) {
                 advice.add(label + "replace the password reused across " + result.getReuseCount() + " accounts.");
             }
+            result.getSimilarPasswords().forEach(match -> advice.add(label
+                    + "use a completely unrelated password; it is similar to "
+                    + match.otherPlatform() + " (" + match.reason().toLowerCase(java.util.Locale.ROOT) + ")."));
             for (String pattern : result.getPatterns()) {
                 advice.add(label + "remove this predictable feature: " + pattern.toLowerCase(java.util.Locale.ROOT) + ".");
             }

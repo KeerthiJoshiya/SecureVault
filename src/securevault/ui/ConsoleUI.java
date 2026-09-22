@@ -202,6 +202,7 @@ public final class ConsoleUI {
             System.out.printf("%-21s: %d%n", strength, report.countStrength(strength));
         }
         System.out.println("Accounts with reuse  : " + report.getReusedAccountCount());
+        System.out.println("Similar passwords    : " + report.getSimilarPasswordAccountCount());
         System.out.println("Accounts with patterns: " + report.getPatternAccountCount());
         System.out.println("High/critical risk   : " + report.getHighRiskCount());
         System.out.println("Security score       : " + report.getScore() + "/100");
@@ -209,7 +210,12 @@ public final class ConsoleUI {
         for (AccountAnalysis result : report.getAnalyses()) {
             System.out.println("\n" + result.getPlatform() + " | " + result.getUsername());
             System.out.println("  " + result.getStrength() + " | Risk: " + result.getRisk() + " | Score: " + result.getScore());
+            System.out.println("  Calculation: " + result.getStrength().getBaseScore() + " - "
+                    + result.getReusePenalty() + " reuse - " + result.getSimilarityPenalty()
+                    + " similarity - " + result.getPatternPenalty() + " patterns = " + result.getScore());
             if (result.getReuseCount() > 1) { System.out.println("  Password reused across " + result.getReuseCount() + " accounts."); }
+            result.getSimilarPasswords().forEach(match -> System.out.println("  - Similar to "
+                    + match.otherPlatform() + " (" + match.reason() + ")"));
             for (String pattern : result.getPatterns()) { System.out.println("  - " + pattern); }
         }
         recommendations(report);

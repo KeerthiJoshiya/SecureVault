@@ -19,12 +19,25 @@ Length uses Java `char` count (UTF-16 units), not Unicode grapheme count. These
 simple categories can underestimate long passphrases and overestimate complex
 but predictable passwords; the separate pattern check helps with the latter.
 
-## Reuse and patterns
+## Exact reuse, similar passwords, and patterns
 
 Reuse is an exact, case-sensitive password comparison within the current user's
 accounts. A hash bucket is only an optimization; actual equality is always
 checked, so a hash collision cannot incorrectly report reuse. Report counts show
 **accounts affected**, not the number of distinct reused-password groups.
+
+Similar-password detection compares passwords only across different platforms.
+It ignores exact matches because the duplicate checker already handles them, and
+it ignores passwords shorter than 8 characters to reduce noisy matches. It flags:
+
+- case-only variations;
+- the same base text with a changed numeric or symbol ending; or
+- one changed character for 8-9 character passwords, and up to two changes for
+  passwords of 10 or more characters.
+
+The comparison uses temporary character arrays and stores only account IDs,
+platform labels, and the reason for the match. Password values never enter the
+report. These are explainable heuristics and may not find every human pattern.
 
 Pattern checks are case-insensitive: common words (`password`, `welcome`,
 `letmein`, `admin`), username/email local part of 3+ characters, 3 repeated
@@ -38,6 +51,8 @@ Account score = max(0, strength points - reuse penalty - pattern penalty).
 
 - Reuse across 2 accounts subtracts 25 points.
 - Reuse across 3 or more accounts subtracts 35 points.
+- A similar-password relationship subtracts 15 points when exact reuse does not
+  already apply. Exact and similarity penalties never stack on one account.
 - Each detected pattern subtracts 10 points, capped at 20 points per account.
 
 This separates the reasons clearly. Reusing an otherwise very strong password

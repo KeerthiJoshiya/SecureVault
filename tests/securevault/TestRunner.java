@@ -285,6 +285,55 @@ public final class TestRunner {
                 account("B", "second", "Ax7!mN4$pQ2z")));
         check(report.getScore() == 55, "Strong password reused twice keeps a nonzero explainable score");
         check(report.getAnalyses().get(0).getRisk() == RiskLevel.MEDIUM, "Strong reused password is medium risk");
+        similarityChecks(engine);
+    }
+
+    private static void similarityChecks(SecurityAnalysisEngine engine) throws Exception {
+        SecurityReport report = engine.analyze(List.of(
+                account("Mail", "first", "FamilyX@2025"),
+                account("Social", "second", "FamilyX@2026")));
+        check(report.getSimilarPasswordAccountCount() == 2, "Changed year is detected as similar reuse");
+        check(report.getAnalyses().get(0).getSimilarityPenalty() == 15, "Similarity applies a 15-point penalty");
+        check(report.getAnalyses().get(0).getSimilarPasswords().iterator().next().reason()
+                .contains("same base text"), "Similarity explains the shared base text");
+
+        report = engine.analyze(List.of(
+                account("Mail", "first", "AlphaBeta#42"),
+                account("Social", "second", "ALPHABETA#42")));
+        check(report.getSimilarPasswordAccountCount() == 2, "Case-only variation is detected");
+
+        report = engine.analyze(List.of(
+                account("Mail", "first", "Ax7!mN4$pQ2z"),
+                account("Social", "second", "Ax7!mN4$pQ2y")));
+        check(report.getSimilarPasswordAccountCount() == 2, "One-character variation is detected");
+        check(report.getScore() == 65, "Strong similar passwords receive the intended score");
+
+        report = engine.analyze(List.of(
+                account("Mail", "first", "V9!mR2$kL7&z"),
+                account("Social", "second", "Q4#tB8^nC1*p")));
+        check(report.getSimilarPasswordAccountCount() == 0, "Unrelated passwords are not flagged");
+
+        report = engine.analyze(List.of(
+                account("Mail", "first", "short1"),
+                account("Social", "second", "short2")));
+        check(report.getSimilarPasswordAccountCount() == 0, "Short passwords skip similarity comparison");
+
+        report = engine.analyze(List.of(
+                account("Mail", "first", "Ax7!mN4$pQ2z"),
+                account("mail", "second", "Ax7!mN4$pQ2y")));
+        check(report.getSimilarPasswordAccountCount() == 0, "Same-platform accounts are not compared");
+
+        report = engine.analyze(List.of(
+                account("Mail", "first", "Ax7!mN4$pQ2z"),
+                account("Social", "second", "Ax7!mN4$pQ2z"),
+                account("Work", "third", "Ax7!mN4$pQ2y")));
+        check(report.getAnalyses().get(0).getReusePenalty() == 25, "Exact reuse keeps the larger penalty");
+        check(report.getAnalyses().get(0).getSimilarityPenalty() == 0,
+                "Similarity does not stack on an exact-reuse penalty");
+        check(!report.getAnalyses().get(0).getSimilarPasswords().isEmpty(),
+                "Related accounts remain visible even when exact reuse dominates scoring");
+        check(report.getRecommendations().stream().noneMatch(text -> text.contains("Ax7!mN4")),
+                "Recommendations never expose password values");
     }
 
     private static Account account(String platform, String username, String password) throws Exception {

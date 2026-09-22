@@ -427,11 +427,13 @@ public final class SwingUI {
     }
 
     private JPanel metricCards(SecurityReport report) {
-        JPanel metrics = new JPanel(new GridLayout(1, 4, 12, 0));
+        JPanel metrics = new JPanel(new GridLayout(1, 5, 10, 0));
         metrics.setOpaque(false);
         metrics.add(metric("Security score", report.getScore() + "/100", scoreColor(report.getScore())));
         metrics.add(metric("Total accounts", Integer.toString(report.getAnalyses().size()), PRIMARY));
         metrics.add(metric("Reuse affected", Long.toString(report.getReusedAccountCount()), DANGER));
+        metrics.add(metric("Similar affected", Long.toString(report.getSimilarPasswordAccountCount()),
+                new Color(190, 125, 15)));
         metrics.add(metric("High / critical", Long.toString(report.getHighRiskCount()), DANGER));
         return metrics;
     }
@@ -444,13 +446,18 @@ public final class SwingUI {
         for (AccountAnalysis result : report.getAnalyses()) {
             StringBuilder findings = new StringBuilder();
             if (result.getReuseCount() > 1) { findings.append("Reused across ").append(result.getReuseCount()).append(" accounts"); }
+            result.getSimilarPasswords().forEach(match -> {
+                if (!findings.isEmpty()) { findings.append("; "); }
+                findings.append("Similar to ").append(match.otherPlatform()).append(": ").append(match.reason());
+            });
             for (String pattern : result.getPatterns()) {
                 if (!findings.isEmpty()) { findings.append("; "); }
                 findings.append(pattern);
             }
             if (findings.isEmpty()) { findings.append("No issues detected"); }
             String calculation = result.getStrength().getBaseScore() + " - " + result.getReusePenalty()
-                    + " - " + result.getPatternPenalty() + " = " + result.getScore();
+                    + " - " + result.getSimilarityPenalty() + " - " + result.getPatternPenalty()
+                    + " = " + result.getScore();
             model.addRow(new Object[] {result.getPlatform(), result.getStrength(), result.getRisk(),
                     result.getScore() + "/100", calculation, findings});
         }

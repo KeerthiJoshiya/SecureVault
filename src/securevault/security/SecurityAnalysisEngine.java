@@ -11,7 +11,7 @@ import securevault.model.SecurityReport;
 
 public final class SecurityAnalysisEngine {
     private final List<SecurityCheck> checks = List.of(new PasswordStrengthChecker(),
-            new DuplicatePasswordChecker(), new PatternChecker());
+            new DuplicatePasswordChecker(), new SimilarPasswordChecker(), new PatternChecker());
 
     public SecurityReport analyze(List<Account> accounts) {
         Map<UUID, AccountAnalysis> results = new LinkedHashMap<>();

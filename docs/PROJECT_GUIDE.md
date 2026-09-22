@@ -34,7 +34,7 @@ precaution, not a claim that memory is perfectly protected.
 
 `security/` holds analysis and credential protection, separately from the menu.
 `SecurityCheck` is an **interface**, a promise that a class supplies `analyze`.
-`PasswordStrengthChecker`, `DuplicatePasswordChecker`, and `PatternChecker`
+`PasswordStrengthChecker`, `DuplicatePasswordChecker`, `SimilarPasswordChecker`, and `PatternChecker`
 **implement** it and **override** that method. `SecurityAnalysisEngine` stores
 them in a `List<SecurityCheck>` and calls the same method on different objects:
 this is **runtime polymorphism**. Each check receives all accounts because reuse
@@ -48,6 +48,8 @@ is a relationship across accounts, not a property detectable from one alone.
 - `ArrayList`: ordered results and recommendations.
 - `HashMap`: groups possible matching passwords; equality resolves collisions.
 - `LinkedHashSet`: stores unique pattern reasons in stable display order.
+- `SimilarPasswordMatch`: a Java record holding an immutable relationship without
+  storing either password. The checker compares different platforms only.
 - **Generics** (`List<Account>`) make collection element types explicit.
 - **Streams/lambdas** filter/count report statistics. Ordinary loops handle
   character-by-character analysis because they are easier to follow there.
